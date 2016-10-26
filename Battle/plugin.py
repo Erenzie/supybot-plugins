@@ -87,8 +87,8 @@ class Battle(callbacks.PluginRegexp):
         "^\x01ACTION (casts|drops) (.*) (on|at) (.*)\x01$"
         atktype = match.group(1)
         attacker = msg.nick
-        victim = match.group(2)
-        weapon = match.group(4)
+        victim = match.group(4)
+        weapon = match.group(2)
         self.doAttack(irc, msg, attacker, victim, weapon, atktype)
     
     #### END REGEXES ####
@@ -174,7 +174,10 @@ class Battle(callbacks.PluginRegexp):
         
         result["dmg"] = damage
         result["hp"] = nvicthp
-        result["wep"] = self.wepName(weapon, attacker, True) # capitalise beginning of everything for now
+        
+        
+        #result["wep"] = self.wepName(weapon, attacker, False) # do capitalisation in makeBattleResponse
+        result["wep"] = weapon
         
         return result
 
@@ -203,18 +206,18 @@ class Battle(callbacks.PluginRegexp):
                 else:
                     msg = "\001ACTION calls the police\001"
             elif batresult["type"] == "fatalNormal":
-                msg = "{} is fatally injured by {}, taking {} damage. RIP".format(victim, batresult["wep"], batresult["dmg"])
+                msg = "{} is fatally injured by {}, taking {} damage. RIP".format(victim, self.wepName(weapon, attacker, False), batresult["dmg"])
             elif batresult["type"] == "fatalCrit":
-                msg = "{} is \002CRITICALLY HIT\002 to \002DEATH\002 by {}, taking {} damage! RIP".format(victim, batresult["wep"], batresult["dmg"])
+                msg = "{} is \002CRITICALLY HIT\002 to \002DEATH\002 by {}, taking {} damage! RIP".format(victim, self.wepName(weapon, attacker, False), batresult["dmg"])
             elif batresult["type"] == "normal":
                 if batresult["dmg"] > 1500:
-                    msg = "{} is tremendously damaged by {}, taking {} damage!".format(victim, batresult["wep"], batresult["dmg"], batresult["hp"])
+                    msg = "{} is tremendously damaged by {}, taking {} damage!".format(victim, self.wepName(weapon, attacker, False), batresult["dmg"], batresult["hp"])
                 elif batresult["dmg"] < 200:
-                    msg = "{} barely even felt {}, taking {} damage.".format(victim, batresult["wep"], batresult["dmg"], batresult["hp"])
+                    msg = "{} barely even felt {}, taking {} damage.".format(victim, self.wepName(weapon, attacker, False), batresult["dmg"], batresult["hp"])
                 else:
-                    msg = "{} takes {} damage from {}.".format(victim, batresult["dmg"], batresult["wep"], batresult["hp"])
+                    msg = "{} takes {} damage from {}.".format(victim, batresult["dmg"], self.wepName(weapon, attacker, False), batresult["hp"])
             elif batresult["type"] == "crit":
-                msg = "{} is \002CRITICALLY HIT\002 by {}, taking {} damage!".format(victim, batresult["wep"], batresult["dmg"], batresult["hp"])
+                msg = "{} is \002CRITICALLY HIT\002 by {}, taking {} damage!".format(victim, self.wepName(weapon, attacker, False), batresult["dmg"], batresult["hp"])
         
         ### THROWS, DROPS, THWACKS ###
         elif atktype in ["throws", "drops", "thwacks"]:
@@ -227,22 +230,22 @@ class Battle(callbacks.PluginRegexp):
                 batresult = self.doDamage(attacker, newvictim, weapon, "throws", True)
                 msg = "{} missed {} and instead hit {}, dealing {} damage!".format(attacker, originalvictim, newvictim, batresult["dmg"], batresult["hp"])
             elif batresult["type"] in ["fatalNormal", "fatalCrit"]:
-                msg = "{} hit {} so hard that they fell over and died, taking {} damage. RIP".format(batresult["wep"], victim, batresult["dmg"])
+                msg = "{} hit {} so hard that they fell over and died, taking {} damage. RIP".format(self.wepName(weapon, attacker, True), victim, batresult["dmg"])
             elif batresult["type"] in ["normal", "crit"]:
                 if batresult["dmg"] > 1500:
                     # check if plural
                     if batresult["wep"][-1:] == "s":
-                        msg = batresult["wep"] + " severely injure "
+                        msg = self.wepName(weapon, attacker, True) + " severely injure "
                     else:
-                        msg = batresult["wep"] + " severely injures "
+                        msg = self.wepName(weapon, attacker, True) + " severely injures "
                     msg = msg + "{}, dealing {} damage!".format(victim, batresult["dmg"], batresult["hp"])
                 elif batresult["dmg"] < 200:
-                    msg = "{} barely hit {}, dealing {} damage.".format(batresult["wep"], victim, batresult["dmg"], batresult["hp"])
+                    msg = "{} barely hit {}, dealing {} damage.".format(self.wepName(weapon, attacker, False), victim, batresult["dmg"], batresult["hp"])
                 else:
                     if batresult["wep"][-1:] == "s":
-                        msg = batresult["wep"] + " thwack "
+                        msg = self.wepName(weapon, attacker, True) + " thwack "
                     else:
-                        msg = batresult["wep"] + " thwacks "
+                        msg = self.wepName(weapon, attacker, True) + " thwacks "
                     msg = msg + "{} in the face, dealing {} damage.".format(victim, batresult["dmg"], batresult["hp"])
         
         ### CASTS AT/ON ###
@@ -250,17 +253,17 @@ class Battle(callbacks.PluginRegexp):
             if batresult["type"] == "miss":
                 msg = "You failed at casting..."
             elif batresult["type"] in ["fatalNormal", "fatalCrit"]:
-                msg = "{} casts a fatal spell of {} at {}, dealing {} damage. RIP".format(attacker, batresult["wep"], victim, batresult["dmg"])
+                msg = "{} casts a fatal spell of {} at {}, dealing {} damage. RIP".format(attacker, self.wepName(weapon, attacker, False, False), victim, batresult["dmg"])
             else:
-                msg = "{} casts {} at {}, dealing {} damage.".format(attacker, batresult["wep"], victim, batresult["dmg"], batresult["hp"])
+                msg = "{} casts {} at {}, dealing {} damage.".format(attacker, self.wepName(weapon, attacker, False, False), victim, batresult["dmg"], batresult["hp"])
         
         # if not fatal, add current hp to msg
-        if batresult["type"] not in ["fatalNormal", "fatalCrit"]:
+        if batresult["type"] not in ["fatalNormal", "fatalCrit", "miss"]:
             msg = msg + " They now have {} HP.".format(batresult["hp"])
         
         return msg
     
-    def wepName(self, name, attacker, capitalise):
+    def wepName(self, name, attacker, capitalise, addThe=True):
         name_s = name.partition(" ")
         # check for a/an
         if name_s[0] == "a":
@@ -292,6 +295,10 @@ class Battle(callbacks.PluginRegexp):
                     name = "{}'s {}".format(attacker, name)
                 else:
                     name = "the {}".format(name)
+        
+        # jk let's remove "the" if we shouldn't be adding the
+        if addThe == False and name[:3] == "the":
+            name = name[4:]
         
         if capitalise:
             name = name[0].upper() + name[1:]
