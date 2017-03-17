@@ -68,11 +68,13 @@ class Battle(callbacks.PluginRegexp):
     #       "heals":    re.compile(r"^ACTION heals (.*) with (.*)$")}   # wep vict
     
     def attacks(self, irc, msg, match):
-        "^\x01ACTION (attacks|stabs|thwacks) (.*) with (.*)\x01$"
+        "^\x01ACTION (attacks|stabs|thwacks) (.*?)(?: with (.*))?\x01$"
         atktype = match.group(1)
         attacker = msg.nick
-        victim = match.group(2)
+        victim = match.group(2).strip()
         weapon = match.group(3)
+        if not weapon:  # Allow the "with XYZ" part to be omitted
+            weapon = "the knife"
         self.doAttack(irc, msg, attacker, victim, weapon, atktype)
     
     def throws(self, irc, msg, match):
