@@ -52,10 +52,6 @@ class Battle(callbacks.PluginRegexp):
     
     players = {}
     
-    def __init__(self, irc):
-        self.__parent = super(Battle, self)
-        self.__parent.__init__(irc)
-    
     #### REGEXES ####
     #regexes = {"attacks":  re.compile(r"^ACTION attacks (.*) with (.*)$"), # vict wep
     #       "stabs":    re.compile(r"^ACTION stabs (.*) with (.*)$"),   # vict wep
