@@ -54,8 +54,7 @@ class Battle(callbacks.PluginRegexp):
     players = {}
     
     def __init__(self, irc):
-        self.__parent = super(Battle, self)
-        self.__parent.__init__(irc)
+        super().__init__(irc)
         
         # sqlite database wooo
         # i have no clue what the best way to do this in the context of a supybot/linmoria plugin is
