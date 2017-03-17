@@ -29,6 +29,7 @@
 ###
 
 import random
+import sqlite3
 
 import supybot.utils as utils
 from supybot.commands import *
@@ -48,13 +49,23 @@ class Battle(callbacks.PluginRegexp):
     """Attack other users! Thow stuff at them! A plugin for /me battles."""
     threaded = True
     public = True
-    unaddressedRegexps = ['attacks', 'throws', 'casts']
+    unaddressedRegexps = ['attacks', 'throws', 'casts', 'fites', 'slaps']
     
     players = {}
     
     def __init__(self, irc):
         self.__parent = super(Battle, self)
         self.__parent.__init__(irc)
+        
+        # sqlite database wooo
+        # i have no clue what the best way to do this in the context of a supybot/linmoria plugin is
+        try:
+            self.con = sqlite3.connect("plugins/Battle/db.sqlite")
+            self.cur = self.con.cursor()
+        except sqlite3.Error as e:
+            print("error opening database: %s" % e)
+            # should probably add some code to make a db but i'm L A Z Y
+            # i also dunno how to make this be a failure loading the plugin! yay!
     
     #### REGEXES ####
     #regexes = {"attacks":  re.compile(r"^ACTION attacks (.*) with (.*)$"), # vict wep
@@ -91,13 +102,33 @@ class Battle(callbacks.PluginRegexp):
         weapon = match.group(2)
         self.doAttack(irc, msg, attacker, victim, weapon, atktype)
     
+    def slaps(self, irc, msg, match):
+        "^\x01ACTION slaps (.*) with (.*)\x01$"
+        atktype = "throws"
+        attacker = msg.nick
+        victim = match.group(1)
+        weapon = match.group(2)
+        self.doAttack(irc, msg, attacker, victim, weapon, atktype)
+    
+    def fites(self, irc, msg, match):
+        "^\x01ACTION fites (.*)\x01$"
+        atktype = "attacks"
+        attacker = msg.nick
+        victim = match.group(1)
+        weapon = "the 1v1 fite irl"
+        self.doAttack(irc, msg, attacker, victim, weapon, atktype)
+    
     #### END REGEXES ####
     
     def doAttack(self, irc, msg, attacker, victim, weapon, atktype):
         batresult = self.doDamage(attacker, victim, weapon, atktype)
         newmsg = self.makeBattleResponse(atktype, victim, weapon, batresult, attacker, irc.state.channels[msg.args[0]].users)
         self.log.info("Battle: %s in %s: %s", msg.nick, msg.args[0], newmsg)
-        irc.reply(newmsg, prefixNick=False)
+        # lazy hack
+        if newmsg == "\001ACTION calls the police\001":
+            irc.reply(newmsg, action=True)
+        else:
+            irc.reply(newmsg, prefixNick=False)
         if batresult["hp"] == 0:
             irc.reply(self.doRespawn(victim), prefixNick=False)
 
@@ -184,17 +215,21 @@ class Battle(callbacks.PluginRegexp):
     def doRespawn(self, name):
         self.players[name] = 10000
         
-        # TODO: death count
+        # add to user's death count
+        deaths = self.addUserDeath(name)
+        
+        # https://stackoverflow.com/questions/9647202/ordinal-numbers-replacement/36977549#36977549
+        suf = lambda n: "%d%s"%(n,{1:"st",2:"nd",3:"rd"}.get(n if n<20 else n%10,"th"))
         
         lolo = random.randint(1, 2)
         if lolo == 1:
-            return "However, through the use of ancient magic rituals, they have been reborn with full health for the {num}th time."
+            return "However, through the use of ancient magic rituals, they have been reborn with full health for the {} time.".format(suf(deaths))
         else:
-            return "However, thanks to new technology, they have respawned with full health for the {num}th time."
+            return "However, thanks to new technology, they have respawned with full health for the {} time.".format(suf(deaths))
     
     #### CREATES BATTLE REPLIES ####
     def makeBattleResponse(self, atktype, victim, weapon, batresult, attacker, users):
-        # newmsg = makeBattleResponse(atktype, victim, weapon, batresult, attacker, None) # replace None with channel userlist FIXME
+        userIsThrown = False # probably a bad hack ayy lmao
         ### ATTACKS, STABS, FITES ###
         if atktype in ["attacks", "stabs", "fites"]:
             if batresult["type"] == "miss":
@@ -232,21 +267,47 @@ class Battle(callbacks.PluginRegexp):
             elif batresult["type"] in ["fatalNormal", "fatalCrit"]:
                 msg = "{} hit {} so hard that they fell over and died, taking {} damage. RIP".format(self.wepName(weapon, attacker, True), victim, batresult["dmg"])
             elif batresult["type"] in ["normal", "crit"]:
+                
+                # is someone throwing someone at someone?
+                if batresult["wep"] in users or batresult["wep"] in ["himself", "herself", "theirself"]:
+                    userIsThrown = True
+                    # if someone's throwing theirself, use their nick instead of "*self"
+                    if batresult["wep"] in ["himself", "herself", "theirself"]:
+                        thrownuser = attacker
+                    else:
+                        thrownuser = batresult["wep"]
+                    # add to players if not already
+                    if thrownuser not in self.players:
+                        self.addPlayer(thrownuser)
+                    # and damage them too
+                    thrownuserresult = self.doDamage(attacker, thrownuser, weapon, "throws", True)
+                        
                 if batresult["dmg"] > 1500:
                     # check if plural
                     if batresult["wep"][-1:] == "s":
                         msg = self.wepName(weapon, attacker, True) + " severely injure "
                     else:
                         msg = self.wepName(weapon, attacker, True) + " severely injures "
-                    msg = msg + "{}, dealing {} damage!".format(victim, batresult["dmg"], batresult["hp"])
+                    
+                    if userIsThrown:
+                        msg = msg + "{}, dealing {} damage to both!".format(victim, batresult["dmg"], batresult["hp"])
+                    else:
+                        msg = msg + "{}, dealing {} damage!".format(victim, batresult["dmg"], batresult["hp"])
                 elif batresult["dmg"] < 200:
-                    msg = "{} barely hit {}, dealing {} damage.".format(self.wepName(weapon, attacker, False), victim, batresult["dmg"], batresult["hp"])
+                    if userIsThrown:
+                        msg = "{} barely hit {}, dealing {} damage to both.".format(self.wepName(weapon, attacker, False), victim, batresult["dmg"], batresult["hp"])
+                    else:
+                        msg = "{} barely hit {}, dealing {} damage.".format(self.wepName(weapon, attacker, False), victim, batresult["dmg"], batresult["hp"])
                 else:
                     if batresult["wep"][-1:] == "s":
                         msg = self.wepName(weapon, attacker, True) + " thwack "
                     else:
                         msg = self.wepName(weapon, attacker, True) + " thwacks "
-                    msg = msg + "{} in the face, dealing {} damage.".format(victim, batresult["dmg"], batresult["hp"])
+                    
+                    if userIsThrown:
+                        msg = msg + "{} in the face, dealing {} damage to both.".format(victim, batresult["dmg"], batresult["hp"])
+                    else:
+                        msg = msg + "{} in the face, dealing {} damage.".format(victim, batresult["dmg"], batresult["hp"])
         
         ### CASTS AT/ON ###
         elif atktype == "casts":
@@ -259,17 +320,22 @@ class Battle(callbacks.PluginRegexp):
         
         # if not fatal, add current hp to msg
         if batresult["type"] not in ["fatalNormal", "fatalCrit", "miss"]:
-            msg = msg + " They now have {} HP.".format(batresult["hp"])
+            if userIsThrown:
+                msg = msg + " {} now has {} HP, and {} now has {} HP.".format(victim, batresult["hp"], thrownuser, thrownuserresult["hp"])
+            else:
+                msg = msg + " They now have {} HP.".format(batresult["hp"])
         
         return msg
     
     def wepName(self, name, attacker, capitalise, addThe=True):
         name_s = name.partition(" ")
-        # check for a/an
+        # check for a/an (or un(e) as requested by Xenthys)
         if name_s[0] == "a":
             name = name[2:]
-        elif name_s[0] == "an":
+        elif name_s[0] == "an" or name_s[0] == "un":
             name = name[3:]
+        elif name_s[0] == "une" or name_s[0] == "une":
+            name = name[4:]
         
         # check for his/her/their
         if name_s[0] in ["his", "her"]:
@@ -287,7 +353,7 @@ class Battle(callbacks.PluginRegexp):
             return name
         
         # check for "the"
-        if name_s[0] != "the":
+        if name_s[0].lower() != "the":
             # check for 's
             if "'s" not in name:
                 # no 's, add the or attacker's name
@@ -304,6 +370,42 @@ class Battle(callbacks.PluginRegexp):
             name = name[0].upper() + name[1:]
         
         return name
+    
+    # And now it's time for fun database stuff
+    def getUser(self, nick):
+        self.cur.execute("SELECT * FROM users WHERE nick=?", (nick,))
+        result = self.cur.fetchone()
+        if result == None:
+            # user doesn't exist, add them
+            print("%s does not exist in db, adding" % nick)
+            result = self.addUser(nick)
+        return result
+        
+    def addUser(self, nick, gender="o", deaths=0):
+        # maybe add a check to see if user already exists?
+        self.cur.execute("INSERT INTO users VALUES(?, ?, ?)", (nick, gender, deaths))
+        self.con.commit()
+        return (nick, gender, deaths)
+
+    def addUserDeath(self, nick):
+        # adds +1 to death count
+        # this also adds the user if they don't exist!
+        userinfo = self.getUser(nick)
+        # do i really have to do it like this instead of like $var++;
+        deaths = userinfo[2] + 1
+        
+        self.cur.execute("UPDATE users SET deaths=? WHERE nick=?", (deaths, nick))
+        self.con.commit()
+        
+        return deaths
+
+    def setUserGender(self, nick, gender):
+        userinfo = self.getUser(nick)
+        
+        self.cur.execute("UPDATE users SET gender=? WHERE nick=?", (gender, nick))
+        self.con.commit()
+        
+        return getUser(nick)
 
 
 Class = Battle
