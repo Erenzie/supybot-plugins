@@ -49,9 +49,8 @@ def configure(advanced):
 
 
 Battle = conf.registerPlugin('Battle')
-# This is where your configuration variables (if any) should go.  For example:
-# conf.registerGlobalValue(Battle, 'someConfigVariableName',
-#     registry.Boolean(False, _("""Help for someConfigVariableName.""")))
+conf.registerChannelValue(Battle, 'enabled',
+     registry.Boolean(True, _("""Determines whether the Battle plugin is enabled in the channel.""")))
 
 
 # vim:set shiftwidth=4 tabstop=4 expandtab textwidth=79:
