@@ -57,9 +57,8 @@ class Battle(callbacks.PluginRegexp):
         super().__init__(irc)
         
         # sqlite database wooo
-        # i have no clue what the best way to do this in the context of a supybot/linmoria plugin is
         try:
-            self.con = sqlite3.connect("plugins/Battle/db.sqlite")
+            self.con = sqlite3.connect(conf.supybot.directories.data.dirize("Battle.sqlite"))
             self.cur = self.con.cursor()
         except sqlite3.Error as e:
             print("error opening database: %s" % e)
