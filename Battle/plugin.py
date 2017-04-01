@@ -251,7 +251,7 @@ class Battle(callbacks.PluginRegexp):
     def makeBattleResponse(self, atktype, victim, weapon, batresult, attacker, users):
         userIsThrown = False # probably a bad hack ayy lmao
         ### ATTACKS, STABS, FITES ###
-        if atktype in ["attacks", "stabs", "fites"]:
+        if atktype in ["attacks", "stabs", "fites", "slaps"]:
             if batresult["type"] == "miss":
                 lolo = random.randint(1, 3)
                 if lolo == 1:
