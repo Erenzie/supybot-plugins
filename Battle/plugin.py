@@ -83,8 +83,12 @@ class Battle(callbacks.PluginRegexp):
         attacker = msg.nick
         victim = match.group(2).strip()
         weapon = match.group(3)
-        if not weapon:  # Allow the "with XYZ" part to be omitted
-            weapon = "the knife"
+        if not weapon:
+            if atktype == 'stabs': # Allow the "stabs with XYZ" part to be omitted
+                weapon = "the knife"
+            else: # Without a weapon, it is the caller that's injuring the victim.
+                weapon = attacker
+
         self.doAttack(irc, msg, attacker, victim, weapon, atktype)
     
     def throws(self, irc, msg, match):
@@ -335,11 +339,15 @@ class Battle(callbacks.PluginRegexp):
     
     def wepName(self, name, attacker, capitalise, addThe=True):
         name_s = name.partition(" ")
-        # check for a/an (or un(e) as requested by Xenthys)
-        if name_s[0] == "a":
+
+        if name == attacker:
+            # The attacker was a person, so it's probably not right to add "the" before it.
+            return name
+        elif name_s[0] == "a":
             name = name[2:]
         elif name_s[0] == "an" or name_s[0] == "un":
             name = name[3:]
+        # check for a/an (or un(e) as requested by Xenthys)
         elif name_s[0] == "une" or name_s[0] == "une":
             name = name[4:]
         
