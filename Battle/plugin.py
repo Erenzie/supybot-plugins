@@ -131,6 +131,11 @@ class Battle(callbacks.PluginRegexp):
         if not self.registryValue('enabled', msg.args[0]):
             return
 
+        # Make things like "* A stabs B in the feelings" fetch the right victim
+        victim = victim.split(' in ')[0]
+        # Ditto with "* A throws thorns at B's head"
+        victim = victim.split("'")[0]
+
         batresult = self.doDamage(attacker, victim, weapon, atktype)
         newmsg = self.makeBattleResponse(atktype, victim, weapon, batresult, attacker, irc.state.channels[msg.args[0]].users)
         self.log.info("Battle: %s in %s: %s", msg.nick, msg.args[0], newmsg)
