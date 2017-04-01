@@ -108,11 +108,16 @@ class Battle(callbacks.PluginRegexp):
         self.doAttack(irc, msg, attacker, victim, weapon, atktype)
     
     def slaps(self, irc, msg, match):
-        "^\x01ACTION slaps (.*) with (.*)\x01$"
+        "^\x01ACTION slaps (.*)(?: with (.*))?\x01$"
         atktype = "throws"
         attacker = msg.nick
         victim = match.group(1)
         weapon = match.group(2)
+
+        if not weapon:
+            # Without a weapon, it is the caller that's injuring the victim.
+            weapon = random.choice(('the slap', attacker))
+
         self.doAttack(irc, msg, attacker, victim, weapon, atktype)
     
     def fites(self, irc, msg, match):
