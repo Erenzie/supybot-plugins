@@ -83,8 +83,12 @@ class Battle(callbacks.PluginRegexp):
         attacker = msg.nick
         victim = match.group(2).strip()
         weapon = match.group(3)
-        if not weapon:  # Allow the "with XYZ" part to be omitted
-            weapon = "the knife"
+        if not weapon:
+            if atktype == 'stabs': # Allow the "stabs with XYZ" part to be omitted
+                weapon = "the knife"
+            else: # Without a weapon, it is the caller that's injuring the victim.
+                weapon = attacker
+
         self.doAttack(irc, msg, attacker, victim, weapon, atktype)
     
     def throws(self, irc, msg, match):
@@ -104,11 +108,16 @@ class Battle(callbacks.PluginRegexp):
         self.doAttack(irc, msg, attacker, victim, weapon, atktype)
     
     def slaps(self, irc, msg, match):
-        "^\x01ACTION slaps (.*) with (.*)\x01$"
+        "^\x01ACTION slaps (.*)(?: with (.*))?\x01$"
         atktype = "throws"
         attacker = msg.nick
         victim = match.group(1)
         weapon = match.group(2)
+
+        if not weapon:
+            # Without a weapon, it is the caller that's injuring the victim.
+            weapon = random.choice(('the slap', attacker))
+
         self.doAttack(irc, msg, attacker, victim, weapon, atktype)
     
     def fites(self, irc, msg, match):
@@ -126,6 +135,11 @@ class Battle(callbacks.PluginRegexp):
         # msg.args[0] represents the channel in the config option lookup
         if not self.registryValue('enabled', msg.args[0]):
             return
+
+        # Make things like "* A stabs B in the feelings" fetch the right victim
+        victim = victim.split(' in ')[0]
+        # Ditto with "* A throws thorns at B's head"
+        victim = victim.split("'")[0]
 
         batresult = self.doDamage(attacker, victim, weapon, atktype)
         newmsg = self.makeBattleResponse(atktype, victim, weapon, batresult, attacker, irc.state.channels[msg.args[0]].users)
@@ -335,11 +349,15 @@ class Battle(callbacks.PluginRegexp):
     
     def wepName(self, name, attacker, capitalise, addThe=True):
         name_s = name.partition(" ")
-        # check for a/an (or un(e) as requested by Xenthys)
-        if name_s[0] == "a":
+
+        if name == attacker:
+            # The attacker was a person, so it's probably not right to add "the" before it.
+            return name
+        elif name_s[0] == "a":
             name = name[2:]
         elif name_s[0] == "an" or name_s[0] == "un":
             name = name[3:]
+        # check for a/an (or un(e) as requested by Xenthys)
         elif name_s[0] == "une" or name_s[0] == "une":
             name = name[4:]
         
