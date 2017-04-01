@@ -109,7 +109,7 @@ class Battle(callbacks.PluginRegexp):
     
     def slaps(self, irc, msg, match):
         "^\x01ACTION slaps (.*)(?: with (.*))?\x01$"
-        atktype = "throws"
+        atktype = "slaps"
         attacker = msg.nick
         victim = match.group(1)
         weapon = match.group(2)
