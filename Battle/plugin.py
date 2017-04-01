@@ -36,6 +36,7 @@ from supybot.commands import *
 import supybot.plugins as plugins
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
+import supybot.conf as conf
 try:
     from supybot.i18n import PluginInternationalization
     _ = PluginInternationalization('Battle')
@@ -57,9 +58,8 @@ class Battle(callbacks.PluginRegexp):
         super().__init__(irc)
         
         # sqlite database wooo
-        # i have no clue what the best way to do this in the context of a supybot/linmoria plugin is
         try:
-            self.con = sqlite3.connect("plugins/Battle/db.sqlite")
+            self.con = sqlite3.connect(conf.supybot.directories.data.dirize("Battle.sqlite"))
             self.cur = self.con.cursor()
         except sqlite3.Error as e:
             print("error opening database: %s" % e)
@@ -122,6 +122,11 @@ class Battle(callbacks.PluginRegexp):
     #### END REGEXES ####
     
     def doAttack(self, irc, msg, attacker, victim, weapon, atktype):
+
+        # msg.args[0] represents the channel in the config option lookup
+        if not self.registryValue('enabled', msg.args[0]):
+            return
+
         batresult = self.doDamage(attacker, victim, weapon, atktype)
         newmsg = self.makeBattleResponse(atktype, victim, weapon, batresult, attacker, irc.state.channels[msg.args[0]].users)
         self.log.info("Battle: %s in %s: %s", msg.nick, msg.args[0], newmsg)
