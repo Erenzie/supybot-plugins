@@ -92,7 +92,7 @@ class Battle(callbacks.PluginRegexp):
         self.doAttack(irc, msg, attacker, victim, weapon, atktype)
     
     def throws(self, irc, msg, match):
-        "^\x01ACTION throws (.*) at (.*)\x01$"
+        "^\x01ACTION throws (.*?) at (.*)\x01$"
         atktype = "throws"
         attacker = msg.nick
         victim = match.group(2)
@@ -100,7 +100,7 @@ class Battle(callbacks.PluginRegexp):
         self.doAttack(irc, msg, attacker, victim, weapon, atktype)
     
     def casts(self, irc, msg, match):
-        "^\x01ACTION (casts|drops) (.*) (on|at) (.*)\x01$"
+        "^\x01ACTION (casts|drops) (.*?) (on|at) (.*)\x01$"
         atktype = match.group(1)
         attacker = msg.nick
         victim = match.group(4)
@@ -108,7 +108,7 @@ class Battle(callbacks.PluginRegexp):
         self.doAttack(irc, msg, attacker, victim, weapon, atktype)
     
     def slaps(self, irc, msg, match):
-        "^\x01ACTION slaps (.*)(?: with (.*))?\x01$"
+        "^\x01ACTION slaps (.*?)(?: with (.*))?\x01$"
         atktype = "slaps"
         attacker = msg.nick
         victim = match.group(1)
