@@ -141,8 +141,8 @@ class Battle(callbacks.PluginRegexp):
         # Ditto with "* A throws thorns at B's head"
         victim = victim.split("'")[0]
 
-        # Strip spaces on the weapon and victim
-        weapon, victim = map(str.strip, (weapon, victim))
+        # Strip spaces and punctuation from the weapon and victim.
+        weapon, victim = map(lambda text: str.strip(text, ',.! '), (weapon, victim))
 
         batresult = self.doDamage(attacker, victim, weapon, atktype)
         newmsg = self.makeBattleResponse(atktype, victim, weapon, batresult, attacker, irc.state.channels[msg.args[0]].users)
