@@ -224,7 +224,7 @@ class Battle(callbacks.PluginRegexp):
         elif nvicthp == 0:
             result["type"] = "fatalNormal"
         else:
-            print("something broke")
+            self.log.debug("something broke")
         
         result["dmg"] = damage
         result["hp"] = nvicthp
@@ -282,7 +282,7 @@ class Battle(callbacks.PluginRegexp):
             if batresult["type"] == "miss":
                 # hit some other random person in the channel
                 newvictim = random.sample(users, 1)[0]
-                print("randomly selected new victim is " + newvictim)
+                self.log.debug("randomly selected new victim is " + newvictim)
                 originalvictim = victim
                 # def doAttack(self, attacker, victim, weapon, atktype, noFail=False):
                 batresult = self.doDamage(attacker, newvictim, weapon, "throws", True)
@@ -404,7 +404,7 @@ class Battle(callbacks.PluginRegexp):
         result = self.cur.fetchone()
         if result == None:
             # user doesn't exist, add them
-            print("%s does not exist in db, adding" % nick)
+            self.log.debug("%s does not exist in db, adding" % nick)
             result = self.addUser(nick)
         return result
         
