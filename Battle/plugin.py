@@ -148,7 +148,7 @@ class Battle(callbacks.PluginRegexp):
         newmsg = self.makeBattleResponse(atktype, victim, weapon, batresult, attacker, irc.state.channels[msg.args[0]].users)
         self.log.info("Battle: %s in %s: %s", msg.nick, msg.args[0], newmsg)
         # lazy hack
-        if newmsg == "\001ACTION calls the police\001":
+        if newmsg == "calls the police":
             irc.reply(newmsg, action=True)
         else:
             irc.reply(newmsg, prefixNick=False)
@@ -262,7 +262,7 @@ class Battle(callbacks.PluginRegexp):
                 elif lolo == 2:
                     msg = "{} is immune to {}".format(victim, batresult["wep"])
                 else:
-                    msg = "\001ACTION calls the police\001"
+                    msg = "calls the police"
             elif batresult["type"] == "fatalNormal":
                 msg = "{} is fatally injured by {}, taking {} damage. RIP".format(victim, self.wepName(weapon, attacker, False), batresult["dmg"])
             elif batresult["type"] == "fatalCrit":
