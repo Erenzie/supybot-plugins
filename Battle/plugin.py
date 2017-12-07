@@ -47,7 +47,7 @@ except ImportError:
 
 
 class Battle(callbacks.PluginRegexp):
-    """Attack other users! Thow stuff at them! A plugin for /me battles."""
+    """Attack other users! Throw stuff at them! A plugin for /me battles."""
     threaded = True
     public = True
     unaddressedRegexps = ['attacks', 'throws', 'casts', 'fites', 'slaps']
